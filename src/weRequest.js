@@ -5,7 +5,10 @@ var sessionName    = "session";
 var loginTrigger   = function () {
     return false
 };
-var codeToSession  = {};
+var getSession     = function (res) {
+    return res.session_id
+};
+var codeName       = "code";
 var successTrigger = function () {
     return true
 };
@@ -67,8 +70,8 @@ function checkSession(callback, obj) {
 }
 
 function doLogin(callback, obj) {
-    if (session || obj.isLogin) {
-        // 缓存中有session，或者是登录接口
+    if (session) {
+        // 缓存中有session
         typeof callback === "function" && callback();
     } else if (logining) {
         // 正在登录中，请求轮询稍后，避免重复调用登录接口
@@ -93,44 +96,14 @@ function doLogin(callback, obj) {
             },
             success: function (res) {
                 if (res.code) {
-                    var data;
-                    // codeToSession.data支持函数
-                    if (typeof codeToSession.data === "function") {
-                        data = codeToSession.data();
-                    } else {
-                        data = codeToSession.data || {};
-                    }
-                    data[codeToSession.codeName] = res.code;
-
-                    obj.count++;
-                    requestWrapper({
-                        url: codeToSession.url,
-                        data: data,
-                        method: codeToSession.method,
-                        isLogin: true,
-                        report: codeToSession.report || codeToSession.url,
-                        success: function (s) {
-                            session        = s;
-                            sessionIsFresh = true;
-                            typeof callback === "function" && callback();
-                            wx.setStorage({
-                                key: sessionName,
-                                data: session
-                            })
-                        },
-                        complete: function () {
-                            obj.count--;
-                            typeof obj.complete === "function" && obj.count == 0 && obj.complete();
-                            logining = false;
-                        },
-                        fail: codeToSession.fail || null
-                    });
+                    obj[codeName] = res.code;
+                    delete obj[sessionName];
+                    typeof callback === "function" && callback();
                 } else {
                     fail(obj, res);
                     console.error(res);
-                    // 登录失败，解除锁，防止死锁
-                    logining = false;
                 }
+                logining = false;
             },
             fail: function (res) {
                 fail(obj, res);
@@ -176,8 +149,8 @@ function request(obj) {
         obj.data = {};
     }
 
-    if (obj.url != codeToSession.url && session) {
-        obj.data[sessionName] = session;
+    if(session) {
+        obj[sessionName] = session;
     }
 
     // 如果有全局参数，则添加
@@ -193,27 +166,30 @@ function request(obj) {
 
     // 如果请求的URL中不是http开头的，则自动添加配置中的前缀
     var url = obj.url.startsWith('http') ? obj.url : (urlPerfix + obj.url);
-    // 如果请求不是GET，则在URL中自动加上登录态和全局参数
-    if (obj.method != "GET") {
-
-        if (session) {
-            if (url.indexOf('?') >= 0) {
-                url += '&' + sessionName + '=' + encodeURIComponent(session);
-            } else {
-                url += '?' + sessionName + '=' + encodeURIComponent(session);
-            }
-        }
-
-        // 如果有全局参数，则在URL中添加
-        for (var i in gd) {
-            if (url.indexOf('?') >= 0) {
-                url += '&' + i + '=' + gd[i];
-            } else {
-                url += '?' + i + '=' + gd[i];
-            }
+    // 拼接code
+    if(obj[codeName]) {
+        if (url.indexOf('?') >= 0) {
+            url += '&' + codeName + '=' + obj[codeName];
+        } else {
+            url += '?' + codeName + '=' + obj[codeName];
         }
     }
-
+    // 拼接session
+    if(obj[sessionName]) {
+        if (url.indexOf('?') >= 0) {
+            url += '&' + sessionName + '=' + obj[sessionName];
+        } else {
+            url += '?' + sessionName + '=' + obj[sessionName];
+        }
+    }
+    // 如果有全局参数，则在URL中添加
+    for (var i in gd) {
+        if (url.indexOf('?') >= 0) {
+            url += '&' + i + '=' + gd[i];
+        } else {
+            url += '?' + i + '=' + gd[i];
+        }
+    }
     // 如果有上报字段配置，则记录请求发出前的时间戳
     if (obj.report) {
         obj._reportStartTime = new Date().getTime();
@@ -234,26 +210,23 @@ function request(obj) {
                     reportCGI(obj.report, obj._reportStartTime, obj._reportEndTime, request);
                 }
 
-                if (obj.isLogin) {
-                    // 登录请求
-                    var s = "";
-                    try {
-                        s = codeToSession.success(res.data);
-                    } catch (e) {
-                    }
-                    if (s) {
-                        obj.success(s);
-                    } else {
-                        fail(obj, res);
-                    }
-                } else if (loginTrigger(res.data) && obj.reLoginLimit < reLoginLimit) {
+                if (getSession(res.data) && getSession(res.data) != session) {
+                    session = getSession(res.data);
+                    wx.setStorage({
+                        key: sessionName,
+                        data: getSession(res.data)
+                    })
+                }
+
+                if (loginTrigger(res.data) && obj.reLoginLimit < reLoginLimit) {
                     // 登录态失效，且重试次数不超过配置
                     session = '';
                     wx.removeStorage({
                         key: sessionName,
                         complete: function () {
                             doLogin(function () {
-                                requestWrapper(obj);
+                                obj = preDo(obj);
+                                request(obj);
                             }, obj)
                         }
                     })
@@ -265,116 +238,13 @@ function request(obj) {
                     } catch (e) {
                         console.error("Function successData occur error: " + e);
                     }
-                    if(!obj.noCacheFlash) {
-                        // 如果为了保证页面不闪烁，则不回调，只是缓存最新数据，待下次进入再用
-                        obj.success(realData);
-                    }
+                    obj.success(realData);
                     if (obj.cache === true || (typeof obj.cache === "function" && obj.cache(realData))) {
                         wx.setStorage({
                             key: obj.url,
                             data: realData
                         })
                     }
-                } else {
-                    // 接口返回失败码
-                    fail(obj, res);
-                }
-            } else {
-                fail(obj, res);
-            }
-        },
-        fail: function (res) {
-            fail(obj, res);
-            console.error(res);
-        },
-        complete: function () {
-            obj.count--;
-            typeof obj.complete === "function" && obj.count == 0 && obj.complete();
-        }
-    })
-}
-
-function uploadFile(obj) {
-    obj.count++;
-
-    if (!obj.formData) {
-        obj.formData = {};
-    }
-    obj.formData[sessionName] = session;
-
-    // 如果有全局参数，则添加
-    var gd = {};
-    if (typeof globalData === "function") {
-        gd = globalData();
-    } else if (typeof globalData === "object") {
-        gd = globalData;
-    }
-    obj.formData = Object.assign({}, gd, obj.formData);
-
-    obj.dataType = obj.dataType || 'json';
-
-    // 如果请求的URL中不是http开头的，则自动添加配置中的前缀
-    var url = obj.url.startsWith('http') ? obj.url : (urlPerfix + obj.url);
-
-    // 在URL中自动加上登录态和全局参数
-    if (session) {
-        if (url.indexOf('?') >= 0) {
-            url += '&' + sessionName + '=' + session;
-        } else {
-            url += '?' + sessionName + '=' + session;
-        }
-    }
-
-    // 如果有全局参数，则在URL中添加
-    for (var i in gd) {
-        if (url.indexOf('?') >= 0) {
-            url += '&' + i + '=' + gd[i];
-        } else {
-            url += '?' + i + '=' + gd[i];
-        }
-    }
-
-    // 如果有上报字段配置，则记录请求发出前的时间戳
-    if (obj.report) {
-        obj._reportStartTime = new Date().getTime();
-    }
-
-    wx.uploadFile({
-        url: url,
-        filePath: obj.filePath || '',
-        name: obj.name || '',
-        formData: obj.formData,
-        success: function (res) {
-            if (res.statusCode == 200 && res.errMsg == 'uploadFile:ok') {
-
-                // 如果有上报字段配置，则记录请求返回后的时间戳，并进行上报
-                if (obj.report && typeof reportCGI === "function") {
-                    obj.endTime = new Date().getTime();
-                    reportCGI(obj.report, obj._reportStartTime, obj._reportEndTime, request);
-                }
-
-                if (obj.dataType == 'json') {
-                    try {
-                        res.data = JSON.parse(res.data);
-                    } catch (e) {
-                        fail(obj, res);
-                        return false;
-                    }
-                }
-                if (loginTrigger(res.data) && obj.reLoginLimit < reLoginLimit) {
-                    // 登录态失效，且重试次数不超过配置
-                    session = '';
-                    wx.removeStorage({
-                        key: sessionName,
-                        complete: function () {
-                            doLogin(function () {
-                                uploadFileWrapper(obj);
-                            }, obj)
-                        }
-                    })
-                } else if (successTrigger(res.data) && typeof obj.success === "function") {
-                    // 接口返回成功码
-                    obj.success(successData(res.data));
                 } else {
                     // 接口返回失败码
                     fail(obj, res);
@@ -438,29 +308,19 @@ function getCache(obj, callback) {
         wx.getStorage({
             key: obj.url,
             success: function (res) {
-                typeof obj.beforeSend === "function" && obj.beforeSend();
                 if (typeof obj.cache === "function" && obj.cache(res.data)) {
-                    typeof obj.success === "function" && obj.success(res.data, {isCache: true});
+                    typeof obj.success === "function" && obj.success(res.data);
                 } else if (obj.cache == true) {
-                    typeof obj.success === "function" && obj.success(res.data, {isCache: true});
+                    typeof obj.success === "function" && obj.success(res.data);
                 }
-                typeof obj.complete === "function" && obj.complete();
-                // 成功取出缓存，还要去请求拿最新的再存起来
-                callback(obj);
             },
-            fail: function() {
-                // 找不到缓存，直接发起请求，且不再防止页面闪烁（本来就没缓存了，更不存在更新页面导致的闪烁）
-                obj.noCacheFlash = false;
-                callback(obj);
+            fail: function () {
+                callback();
             }
         })
     } else {
-        callback(obj);
+        callback();
     }
-}
-
-function login(callback) {
-    checkSession(callback, {})
 }
 
 function init(params) {
@@ -468,9 +328,12 @@ function init(params) {
     loginTrigger   = params.loginTrigger || function () {
             return false
         };
-    codeToSession  = params.codeToSession || {};
+    codeName       = params.codeName || "code";
     successTrigger = params.successTrigger || function () {
             return true
+        };
+    getSession     = params.getSession || function (res) {
+            return res.session_id
         };
     urlPerfix      = params.urlPerfix || "";
     successData    = params.successData || function (res) {
@@ -497,20 +360,13 @@ function requestWrapper(obj) {
         // mock 模式
         mock(obj);
     } else {
-        getCache(obj, function (obj) {
+        getCache(obj, function () {
                 checkSession(function () {
                     request(obj);
                 }, obj)
             }
         )
     }
-}
-
-function uploadFileWrapper(obj) {
-    obj = preDo(obj);
-    checkSession(function () {
-        uploadFile(obj);
-    }, obj)
 }
 
 function setSession(s) {
@@ -520,7 +376,7 @@ function setSession(s) {
 
 function mock(obj) {
     var res = {
-        data: mockJson[obj.url]
+        data: JSON.parse(JSON.stringify(mockJson[obj.url]))
     };
     if (successTrigger(res.data) && typeof obj.success === "function") {
         // 接口返回成功码
@@ -534,22 +390,8 @@ function mock(obj) {
     }
 }
 
-function getSession() {
-    return session;
-}
-
-function getConfig() {
-    return {
-        'urlPerfix': urlPerfix
-    }
-}
-
 module.exports = {
     init: init,
     request: requestWrapper,
-    uploadFile: uploadFileWrapper,
-    setSession: setSession,
-    login: login,
-    getSession: getSession,
-    getConfig: getConfig
+    setSession: setSession
 };

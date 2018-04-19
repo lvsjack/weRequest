@@ -3,6 +3,8 @@ var weRequest = require('../src/weRequest');
 weRequest.init({
     // 存在localStorage的session名称，且CGI请求的data中会自动带上以此为名称的session值；可不传，默认为session
     sessionName: "session",
+    // CGI中传参时，存放code的名称，此处例子名称就是code；可不传，默认值为code
+    codeName: 'code',
     // 请求URL的固定前缀；可不传，默认为空
     urlPerfix: "https://payapp.weixin.qq.com/",
     // 触发重新登录的条件，res为CGI返回的数据
@@ -10,24 +12,9 @@ weRequest.init({
         // 此处例子：当返回数据中的字段errcode等于0x10040009，会自动触发重新登录
         return res.errcode == 0x10040009;
     },
-    // 用code换取session的CGI配置
-    codeToSession: {
-        // CGI的URL
-        url: 'user/login',
-        // 调用改CGI的方法；可不传，默认为GET
-        method: 'GET',
-        // CGI中传参时，存放code的名称，此处例子名称就是code；可不传，默认值为code
-        codeName: 'code',
-        // 登录接口需要的其他参数；可不传，默认为{}
-        data: {},
-        // CGI中返回的session值
-        success: function (res) {
-            // 此处例子：CGI返回数据中的字段session即为session值
-            return res.session;
-        },
-        fail: function(obj, res) {
-
-        }
+    // 后端在接口中返回登录成功后的第三方登录态
+    getSession: function(res) {
+        return res.session_id;
     },
     // 登录重试次数，当连续请求登录接口返回失败次数超过这个次数，将不再重试登录
     reLoginLimit: 2,
