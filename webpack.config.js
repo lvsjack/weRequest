@@ -1,21 +1,14 @@
 var path = require('path');
-var webpack = require('webpack');
-var UglifyJsPlugin = webpack.optimize.UglifyJsPlugin;
 
 module.exports = {
+	//mode: 'development',
+	mode: 'production',
 	entry: './src/weRequest.js',
-    output: {
+	output: {
 		path: path.join(__dirname, 'build'),
 		filename: 'weRequest.js',
 		library: "weRequest",
-        libraryTarget: "commonjs-module"
+		libraryTarget: "commonjs-module"
 	},
-	plugins: [
-		new UglifyJsPlugin({
-			compress: {
-				warnings: false
-			},
-			except: []
-		})
-	]
+	//devtool: 'inline-source-map'
 }

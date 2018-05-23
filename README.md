@@ -1,4 +1,4 @@
-<img src="image/logo.png" alt="logo" height="160" align="center" />
+<img src="https://github.com/IvinWu/weRequest/blob/master/image/logo.png" alt="logo" height="160" align="center" />
 
 # weRequest
 
@@ -99,8 +99,8 @@ weRequest.request({
 |sessionName|String|否|session|储存在localStorage的session名称，且CGI请求的data中会自动带上以此为名称的session值；可不配置，默认为session|
 |urlPerfix|String|否||请求URL的固定前缀，如果配置了，后续请求的URL都会自动加上这个前缀|
 |loginTrigger|Function|是||触发重新登录的条件；参数为CGI返回的数据，返回需要重新登录的条件|
-|codeToSession|Object|是||用code换取session的CGI配置|
 |reLoginLimit|Int|否|3|登录重试次数，当连续请求登录接口返回失败次数超过这个次数，将不再重试登录|
+|getSession|Function|是||后端在接口中返回登录成功后的第三方登录态|
 |successTrigger|Function|是||触发请求成功的条件；参数为CGI返回的数据，返回接口逻辑成功的条件|
 |successData|Function|否||成功之后返回数据；参数为CGI返回的数据，返回逻辑需要使用的数据|
 |errorTitle|String/Function|否|操作失败|接口逻辑失败时，错误弹窗的标题|
@@ -110,17 +110,6 @@ weRequest.request({
 |reportCGI|Function|否||接口返回成功之后，会执行统一的回调函数，这里可以做统一的耗时上报等处理|
 |mockJson|Object|否||可为接口提供mock数据|
 |globalData|Object/Function|否||所有请求都会自动带上这里的参数|
-
-##### codeToSession参数说明
-
-|参数名|类型|必填|默认值|说明|
-| :-------- | :-------| :------ | :------ |:------ |
-|url|String|是||CGI的url|
-|method|String|否|GET|调用改CGI的方法|
-|codeName|String|否|code|CGI中传参时，存放code的名称|
-|data|Object|否||登录接口需要的其他参数|
-|success|Function|是||接口返回成功的函数；需要返回session的值|
-|fail|Function|否||code换取session的接口逻辑出错时，执行的函数，若配置了此函数，则不再默认弹窗报错|
 
 ##### reportCGI返回参数说明
 |参数名|类型|说明|
@@ -141,16 +130,9 @@ weRequest.init({
         // 此处例子：当返回数据中的字段errcode等于-1，会自动触发重新登录
         return res.errcode == -1;
     },
-    codeToSession: {
-        url: 'user/login',
-        method: 'GET',
-        codeName: 'code',
-        data: {},
-        // CGI中返回的session值
-        success: function (res) {
-            // 此处例子：CGI返回数据中的字段session即为session值
-            return res.session;
-        }
+    // 后端在接口中返回登录成功后的第三方登录态
+    getSession: function(res) {
+        return res.session_id;
     },
     reLoginLimit: 2,
     successTrigger: function (res) {

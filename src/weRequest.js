@@ -1,4 +1,5 @@
 const loading = require('./loading');
+const flow = require('./lib/flow');
 
 //params
 var sessionName    = "session";
@@ -36,9 +37,9 @@ var isCheckingSession = false;
 
 function checkSession(callback, obj) {
     if (isCheckingSession) {
-        setTimeout(function () {
+        flow.wait('checkSessionFinished', function () {
             checkSession(callback, obj)
-        }, 500);
+        });
     } else if (!sessionIsFresh && session) {
         isCheckingSession = true;
         obj.count++;
@@ -75,9 +76,9 @@ function doLogin(callback, obj) {
         typeof callback === "function" && callback();
     } else if (logining) {
         // 正在登录中，请求轮询稍后，避免重复调用登录接口
-        setTimeout(function () {
+        flow.wait('doLoginFinished', function () {
             doLogin(callback, obj);
-        }, 500)
+        })
     } else {
         // 缓存中无session
         logining = true;
@@ -104,12 +105,14 @@ function doLogin(callback, obj) {
                     console.error(res);
                 }
                 logining = false;
+                flow.emit('doLoginFinished');
             },
             fail: function (res) {
                 fail(obj, res);
                 console.error(res);
                 // 登录失败，解除锁，防止死锁
                 logining = false;
+                flow.emit('doLoginFinished');
             }
         })
     }
