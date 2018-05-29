@@ -176,6 +176,7 @@ function request(obj) {
         } else {
             url += '?' + codeName + '=' + obj[codeName];
         }
+        obj.data[codeName] = obj[codeName];
     }
     // 拼接session
     if(obj[sessionName]) {
@@ -184,6 +185,7 @@ function request(obj) {
         } else {
             url += '?' + sessionName + '=' + obj[sessionName];
         }
+        obj.data[sessionName] = session;
     }
     // 如果有全局参数，则在URL中添加
     for (var i in gd) {
