@@ -39,7 +39,7 @@ function checkSession(callback, obj) {
     if (isCheckingSession) {
         flow.wait('checkSessionFinished', function () {
             checkSession(callback, obj)
-        });
+        })
     } else if (!sessionIsFresh && session) {
         isCheckingSession = true;
         obj.count++;
@@ -62,6 +62,7 @@ function checkSession(callback, obj) {
                     reportCGI('wx_checkSession', obj._checkSessionStartTime, obj._checkSessionEndTime, request);
                 }
                 doLogin(callback, obj);
+                flow.emit('checkSessionFinished');
             }
         })
     } else {
@@ -243,7 +244,10 @@ function request(obj) {
                     } catch (e) {
                         console.error("Function successData occur error: " + e);
                     }
-                    obj.success(realData);
+                    if(!obj.noCacheFlash) {
+                        // 如果为了保证页面不闪烁，则不回调，只是缓存最新数据，待下次进入再用
+                        obj.success(realData);
+                    }
                     if (obj.cache === true || (typeof obj.cache === "function" && obj.cache(realData))) {
                         wx.setStorage({
                             key: obj.url,
@@ -313,19 +317,29 @@ function getCache(obj, callback) {
         wx.getStorage({
             key: obj.url,
             success: function (res) {
+                typeof obj.beforeSend === "function" && obj.beforeSend();
                 if (typeof obj.cache === "function" && obj.cache(res.data)) {
-                    typeof obj.success === "function" && obj.success(res.data);
+                    typeof obj.success === "function" && obj.success(res.data, {isCache: true});
                 } else if (obj.cache == true) {
-                    typeof obj.success === "function" && obj.success(res.data);
+                    typeof obj.success === "function" && obj.success(res.data, {isCache: true});
                 }
+                typeof obj.complete === "function" && obj.complete();
+                // 成功取出缓存，还要去请求拿最新的再存起来
+                callback(obj);
             },
-            fail: function () {
-                callback();
+            fail: function() {
+                // 找不到缓存，直接发起请求，且不再防止页面闪烁（本来就没缓存了，更不存在更新页面导致的闪烁）
+                obj.noCacheFlash = false;
+                callback(obj);
             }
         })
     } else {
-        callback();
+        callback(obj);
     }
+}
+
+function login(callback) {
+    checkSession(callback, {})
 }
 
 function init(params) {
@@ -365,7 +379,7 @@ function requestWrapper(obj) {
         // mock 模式
         mock(obj);
     } else {
-        getCache(obj, function () {
+        getCache(obj, function (obj) {
                 checkSession(function () {
                     request(obj);
                 }, obj)
@@ -381,7 +395,7 @@ function setSession(s) {
 
 function mock(obj) {
     var res = {
-        data: JSON.parse(JSON.stringify(mockJson[obj.url]))
+        data: mockJson[obj.url]
     };
     if (successTrigger(res.data) && typeof obj.success === "function") {
         // 接口返回成功码
@@ -395,8 +409,21 @@ function mock(obj) {
     }
 }
 
+function getSession() {
+    return session;
+}
+
+function getConfig() {
+    return {
+        'urlPerfix': urlPerfix
+    }
+}
+
 module.exports = {
     init: init,
     request: requestWrapper,
-    setSession: setSession
+    setSession: setSession,
+    login: login,
+    getSession: getSession,
+    getConfig: getConfig
 };
