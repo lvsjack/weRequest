@@ -104,9 +104,10 @@ function doLogin(callback, obj) {
                 } else {
                     fail(obj, res);
                     console.error(res);
+                    // 登录失败，解除锁，防止死锁
+                    logining = false;
+                    flow.emit('doLoginFinished');
                 }
-                logining = false;
-                flow.emit('doLoginFinished');
             },
             fail: function (res) {
                 fail(obj, res);
@@ -220,8 +221,11 @@ function request(obj) {
                     session = getSession(res.data);
                     wx.setStorage({
                         key: sessionName,
-                        data: getSession(res.data)
-                    })
+                        data: session
+                    });
+                    // 成功拿到登陆态，请求的等待队列可以释放
+                    logining = false;
+                    flow.emit('doLoginFinished');
                 }
 
                 if (loginTrigger(res.data) && obj.reLoginLimit < reLoginLimit) {
@@ -409,7 +413,7 @@ function mock(obj) {
     }
 }
 
-function getSession() {
+function _getSession() {
     return session;
 }
 
@@ -424,6 +428,6 @@ module.exports = {
     request: requestWrapper,
     setSession: setSession,
     login: login,
-    getSession: getSession,
+    getSession: _getSession,
     getConfig: getConfig
 };

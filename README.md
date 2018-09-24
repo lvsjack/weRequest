@@ -240,6 +240,16 @@ weRequest.request({
 |showLoading|Boolean|否|false|请求过程页面是否展示全屏的loading|是|
 |report|String|否||接口请求成功后将自动执行init()中配置的reportCGI函数，其中的name字段值为这里配置的值|是|
 
+### .getSession()
+
+[return String]
+获取本地缓存中用户票据的值
+
+### .getConfig()
+
+[return Object]
+获取weRequest的配置。目前Object仅包含urlPerfix字段
+
 ### .login()
 
 <font color=red>[不建议使用]</font> 在不发起业务请求的情况下，单独执行登录逻辑
