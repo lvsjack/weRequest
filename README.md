@@ -110,6 +110,8 @@ weRequest.request({
 |reportCGI|Function|否||接口返回成功之后，会执行统一的回调函数，这里可以做统一的耗时上报等处理|
 |mockJson|Object|否||可为接口提供mock数据|
 |globalData|Object/Function|否||所有请求都会自动带上这里的参数|
+|sessionExpireTime|Int|否|null|为用户登陆态设置本地缓存时间（单位为ms），一旦过期，直接废弃缓存中的登陆态|
+|sessionExpireKey|String|否|sessionExpireKey|如果为用户登陆态设置了本地缓存时间，则过期时间将以此值为key存储在Storage中|
 
 ##### reportCGI返回参数说明
 |参数名|类型|说明|
@@ -248,7 +250,13 @@ weRequest.request({
 ### .getConfig()
 
 [return Object]
-获取weRequest的配置。目前Object仅包含urlPerfix字段
+获取weRequest的配置。返回的Object内容如下：
+|参数名|类型|说明|
+| :-------- | :-------| :------ |
+|urlPerfix|String|在组件初始化时传入的请求URL的固定前缀|
+|sessionExpireTime|Int|在组件初始化时传入的用户登陆态设置本地缓存时间|
+|sessionExpireKey|String|在组件初始化时传入的用户登陆态本地缓存时间Storage的key|
+|sessionExpire|Int|用户登陆态本地缓存过期的时间戳|
 
 ### .login()
 
@@ -296,11 +304,3 @@ weRequest.request({
 })
 ```
 此时，如果接口返回错误码，将触发这里定义的fail函数，且默认错误弹框将不会出现。
-
-### 为什么工具在发起请求之前，不主动去判断第三方session是否过期，而要通过接口结果来判断，这不是浪费了一次请求往返吗？
-
-每个小程序对于自身生成的session都有自己的一套管理方案，微信官方也没有指明一套通用的方案来要求开发者，仅仅要求了**应该保证其安全性且不应该设置较长的过期时间**。
-原文如下：
->通过 wx.login() 获取到用户登录态之后，需要维护登录态。开发者要注意不应该直接把 session_key、openid 等字段作为用户的标识或者 session 的标识，而应该自己派发一个 session 登录态（请参考登录时序图）。对于开发者自己生成的 session，应该保证其安全性且不应该设置较长的过期时间。session 派发到小程序客户端之后，可将其存储在 storage ，用于后续通信使用。
-
-因此，不能要求所有后端接口都要返回session的过期时间给前端，甚至有些后端逻辑对于session的管理是动态的，会随调用情况来更新session的生命周期，这样的话逻辑就更复杂了。但是无论任何一种管理策略，都必须会有兜底策略，即前端传入过期的session，后端必须要返回特定标识告知前端此session过期。因此作为一个通用的工具组件，我需要确保更多的开发者能够低门槛地使用，所以并没有针对各种特别策略去优化，而且我相信，对于正常使用小程序的用户来说，登录态过期是一个相对低概率的事情，对整体效率性能来说，是微乎其微的，使用通用的兜底策略去应对这种情况，我认为已经是足够的了。
