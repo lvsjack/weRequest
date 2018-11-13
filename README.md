@@ -251,6 +251,7 @@ weRequest.request({
 
 [return Object]
 获取weRequest的配置。返回的Object内容如下：
+
 |参数名|类型|说明|
 | :-------- | :-------| :------ |
 |urlPerfix|String|在组件初始化时传入的请求URL的固定前缀|
