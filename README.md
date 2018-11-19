@@ -1,38 +1,13 @@
-<img src="https://github.com/IvinWu/weRequest/blob/master/image/logo.png" alt="logo" height="160" align="center" />
+<img src="image/logo.png" alt="logo" height="160" align="center" />
 
 # weRequest
 
 _解决繁琐的小程序会话管理，一款自带登录态管理的网络请求组件。_
 
-[![Travis](https://img.shields.io/travis/rust-lang/rust.svg)]()
-[![Github All Releases](https://img.shields.io/github/downloads/IvinWu/weRequest/total.svg)]()
 [![GitHub forks](https://img.shields.io/github/forks/IvinWu/weRequest.svg?style=social&label=Fork)]()
 [![GitHub stars](https://img.shields.io/github/stars/IvinWu/weRequest.svg?style=social&label=Stars)]()
 [![GitHub watchers](https://img.shields.io/github/watchers/IvinWu/weRequest.svg?style=social&label=Watch)]()
 [![Packagist](https://img.shields.io/packagist/l/doctrine/orm.svg)]()
-
-## 简介
-
-![登录时序图](http://mp.weixin.qq.com/debug/wxadoc/dev/image/login.png)
-
-上图是小程序官方文档中的**登录时序图**。此图涵盖了前后端，详细讲解了包括登录态的生成，维护，传输等各方面的问题。
-
-具体到业务开发过程中的前端来说，我认为上图还不够完整，于是我画了下面这张以**前端逻辑**为出发点的、包含循环的**流程图**。
-我认为前端每一次**发起网络请求**，跟后台进行数据交互，都适用于下图的**流程**：
-![](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/flow_login.png)
-
-- **hasChecked：** 用一状态标识本生命周期内是否执行过`wx.checkSession`，判断该标识，若否，开始执行`wx.checkSession`，若是，进入下一步
-- **wx.checkSession()：** 调用接口判断登录态是否过期，若是，重新登录；若否，进入下一步
-> wx.checkSession()是小程序提供的检测登录态是否过期的接口，生命周期内只需调用一次即可。用户越久未使用小程序，用户登录态越有可能失效。反之如果用户一直在使用小程序，则用户登录态一直保持有效。具体时效逻辑由微信维护，对开发者透明
-
-- **wx.getStorage(session)：** 尝试获取本地的`session`。如果之前曾经登录过，则能获取到；否则，本地无`session`
-- **wx.login()：** 小程序提供的接口，用于获取`code`（code有效期为5分钟）
-- **wx.request(code)：** 将`code`通过后台提供的接口，换取`session`
-- **wx.setStorage(session)：** 将后台接口返回的`session`存入到localStorage，以备后续使用
-- **wx.request(session)：** 真正发起业务请求，请求中带上`session`
-- **parse(data)：** 对后台返回的数据进行预解析，若发现登录态失效，则重新执行登录；若成功，则真正获取到业务数据
-
-只要遵循上图的流程，我们就无需在业务逻辑中关注登录态的问题了，相当于把登录态的管理问题**耦合**到了发起网络请求当中，本组件则完成了上述流程的封装，让开发者不用再关心以上逻辑，把精力放回在业务的开发上。
 
 ## 目标
 让业务逻辑更专注，不用再关注底层登录态问题。小程序对比以往的H5，登录态管理逻辑要复杂很多。通过`weRequest`这个组件，希望能帮助开发者把更多精力放在业务逻辑上，而登录态管理问题只需通过一次简单配置，以后就不用再花精力管理了。
@@ -63,24 +38,43 @@ weRequest.request({
 - 初始化组件配置
 - **就像使用`wx.request`那样去使用它**
 
+## 为什么需要它
+
+![登录时序图](http://mp.weixin.qq.com/debug/wxadoc/dev/image/login.png)
+
+上图是小程序官方文档中的**登录时序图**。此图涵盖了前后端，详细讲解了包括登录态的生成，维护，传输等各方面的问题。
+
+具体到业务开发过程中的前端来说，我认为上图还不够完整，于是我画了下面这张以**前端逻辑**为出发点的、包含循环的**流程图**。
+我认为前端每一次**发起网络请求**，跟后台进行数据交互，都适用于下图的**流程**：
+![](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/flow_login.png)
+
+- **hasChecked：** 用一状态标识本生命周期内是否执行过`wx.checkSession`，判断该标识，若否，开始执行`wx.checkSession`，若是，进入下一步
+- **wx.checkSession()：** 调用接口判断登录态是否过期，若是，重新登录；若否，进入下一步
+> wx.checkSession()是小程序提供的检测登录态是否过期的接口，生命周期内只需调用一次即可。用户越久未使用小程序，用户登录态越有可能失效。反之如果用户一直在使用小程序，则用户登录态一直保持有效。具体时效逻辑由微信维护，对开发者透明
+
+- **wx.getStorage(session)：** 尝试获取本地的`session`。如果之前曾经登录过，则能获取到；否则，本地无`session`
+- **wx.login()：** 小程序提供的接口，用于获取`code`（code有效期为5分钟）
+- **wx.request(code)：** 将`code`通过后台提供的接口，换取`session`
+- **wx.setStorage(session)：** 将后台接口返回的`session`存入到localStorage，以备后续使用
+- **wx.request(session)：** 真正发起业务请求，请求中带上`session`
+- **parse(data)：** 对后台返回的数据进行预解析，若发现登录态失效，则重新执行登录；若成功，则真正获取到业务数据
+
+只要遵循上图的流程，我们就无需在业务逻辑中关注登录态的问题了，相当于把登录态的管理问题**耦合**到了发起网络请求当中，本组件则完成了上述流程的封装，让开发者不用再关心以上逻辑，把精力放回在业务的开发上。
+
 ## 演示DEMO
 
 ### 自动带上登录态参数
-![自动带上登录态参数](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/auto_session.png)
 
 可以看到，通过`weRequest`发出的请求，将会自动带上登录态参数。
 对应的流程为下图中**红色**的指向：
 ![自动带上登录态参数](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/flow1.png)
 
 ### 没有登录态时，自动登录
-![没有登录态时，自动登录](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/autoLogin.gif)
 
 当本地没有登录态时，按照流程图，`weRequest`将会自动执行`wx.login()`后的一系列流程，得到`code`并调用后台接口换取`session`，储存在localStorage之后，重新发起业务请求。
 对应的流程为下图中**红色**的指向：
-![没有登录态时，自动登录](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/flow2.png)
 
 ### 登录态过期时，自动重新登录
-![登录态过期时，自动重新登录](https://raw.githubusercontent.com/IvinWu/weRequest/master/image/relogin.gif)
 
 对后台数据进行预解析之后，发现登录态过期，于是重新执行登录流程，获取新的`session`之后，重新发起请求。
 对应的流程为下图中**红色**的指向：
@@ -97,7 +91,7 @@ weRequest.request({
 |参数名|类型|必填|默认值|说明|
 | :-------- | :-------| :------ | :------ |:------ |
 |sessionName|String|否|session|储存在localStorage的session名称，且CGI请求的data中会自动带上以此为名称的session值；可不配置，默认为session|
-|urlPerfix|String|否||请求URL的固定前缀，如果配置了，后续请求的URL都会自动加上这个前缀|
+|urlPerfix|String or Function|否||请求URL的固定前缀，如果配置了，后续请求的URL都会自动加上这个前缀，如果是函数，则为函数的返回值|
 |loginTrigger|Function|是||触发重新登录的条件；参数为CGI返回的数据，返回需要重新登录的条件|
 |reLoginLimit|Int|否|3|登录重试次数，当连续请求登录接口返回失败次数超过这个次数，将不再重试登录|
 |getSession|Function|是||后端在接口中返回登录成功后的第三方登录态|
@@ -251,9 +245,10 @@ weRequest.request({
 
 [return Object]
 获取weRequest的配置。返回的Object内容如下：
+
 |参数名|类型|说明|
 | :-------- | :-------| :------ |
-|urlPerfix|String|在组件初始化时传入的请求URL的固定前缀|
+|urlPerfix|String or Function|在组件初始化时传入的请求URL的固定前缀|
 |sessionExpireTime|Int|在组件初始化时传入的用户登陆态设置本地缓存时间|
 |sessionExpireKey|String|在组件初始化时传入的用户登陆态本地缓存时间Storage的key|
 |sessionExpire|Int|用户登陆态本地缓存过期的时间戳|

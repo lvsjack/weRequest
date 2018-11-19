@@ -182,7 +182,7 @@ function request(obj) {
     obj.method = obj.method || 'GET';
 
     // 如果请求的URL中不是http开头的，则自动添加配置中的前缀
-    var url = obj.url.startsWith('http') ? obj.url : (urlPerfix + obj.url);
+    var url = obj.url.startsWith('http') ? obj.url : ((typeof urlPerfix === "function" ? urlPerfix() : urlPerfix) + obj.url);
     // 拼接code
     if(obj[codeName]) {
         if (url.indexOf('?') >= 0) {
