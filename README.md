@@ -170,7 +170,7 @@ weRequest.init({
         console.log(name + ":" + (endTime - startTime));
     },
     mockJson: require("../../mock.json"),
-	globalData: function() {
+    globalData: function() {
         return {
             version: getApp().version
         }
@@ -211,7 +211,7 @@ weRequest.request({
     success: function (data) {
         console.log(data);
     },
-    fail: function(obj, res) {
+    fail: function(res) {
     }
 })
 ```
@@ -235,6 +235,25 @@ weRequest.request({
 |complete|Function|否||接口调用结束的回调函数（调用成功、失败都会执行）||
 |showLoading|Boolean|否|false|请求过程页面是否展示全屏的loading|是|
 |report|String|否||接口请求成功后将自动执行init()中配置的reportCGI函数，其中的name字段值为这里配置的值|是|
+
+#### 示例代码
+
+```javascript
+wx.chooseImage({
+    count: 1,
+    success: function (res) {
+        weRequest.uploadFile({
+            url: 'upload/img',
+            filePath: res.tempFilePaths[0],
+            name: 'pic',
+            showLoading: "提交中",
+            success(data){
+                console.log(data.imgPath);
+            }
+        })
+    }
+})
+```
 
 ### .getSession()
 
