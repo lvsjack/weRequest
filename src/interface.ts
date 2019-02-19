@@ -67,6 +67,7 @@ export interface ICodeToSessionOptions{
 }
 
 export interface IRequestOption extends IRequestObject {
+    token: string;
     /* 发起请求前执行的函数 */
     beforeSend?: Function;
     /* 请求过程页面是否展示全屏的loading */
@@ -99,6 +100,7 @@ export interface IRequestObject extends wx.RequestOption{
 }
 
 export interface IUploadFileOption extends IUploadFileObject {
+    token: string;
     /* 发起请求前执行的函数 */
     beforeSend?: Function;
     /* 请求过程页面是否展示全屏的loading */
@@ -149,7 +151,7 @@ export interface weRequest {
     /* 获取weRequest的配置 */
     getConfig?: () => IGetConfigResult;
     /* [不建议使用] 在不发起业务请求的情况下，单独执行登录逻辑 */
-    login?: (callback: Function) => void;
+    login?: (x:string) => void;
     /* [不建议使用] 设置用户票据的值 */
     setSession?: (x: string) => void;
 }

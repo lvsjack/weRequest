@@ -1,5 +1,5 @@
-import sessionManager from '../module/sessionManager'
+import sessionManager from "../module/sessionManager";
 
-export default () => {
-    return sessionManager.main()
+export default (token: string) => {
+  return sessionManager.main(token);
 }
